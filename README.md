@@ -6,6 +6,10 @@ Requires:
 * Python version: >= 3.8 
 * [rpg](https://rapid-peptide-generator.readthedocs.io/en/latest/userguide.html#installation) 
 
+You can install varpepdb from PyPI:
+```
+pip install varpepdb
+```
 
 ## Usage
 ```
