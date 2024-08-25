@@ -41,7 +41,7 @@ peptides = generate_single(variants=variants,
 var_peptides=varpepdb.variant_containing_peptides(peptides)
 
 # Write variant peptides into fasta file
-varpepdb.write_fasta(path='path/to/output.fasta', 
+varpepdb.write(path='path/to/output.fasta', 
                      peptides=var_peptides,
                      include_non_unique=True)
 ```
