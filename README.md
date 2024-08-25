@@ -55,7 +55,7 @@ peptides = generate(input_list=[(variants1, sequence1, gene1),
 
 var_peptides=varpepdb.variant_containing_peptides(peptides)
 
-varpepdb.write_fasta(path='path/to/output.fasta', 
+varpepdb.write(path='path/to/output.fasta', 
                      peptides=var_peptides,
                      include_non_unique=True)
 ```
