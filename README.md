@@ -2,8 +2,8 @@
 varpepdb is a python package for generating a fasta database of genetically variant peptides for peptide spectrum matching after data acquisition by LC/MS. It takes in a list of amino acid substitutions for a protein sequence and generates all possible variant peptides after enzymatic cleaving. It allows for multiple digestion enzymes and up to 1 miscleavage. It also takes into account the effect of amino acid substitutions on enzyme cleavage.
 
 ## Installation
-Tested Python version: >= 3.11.5 <br>
 Requires:
+* Python version: >= 3.8 
 * [rpg](https://rapid-peptide-generator.readthedocs.io/en/latest/userguide.html#installation) 
 
 
@@ -12,7 +12,7 @@ Requires:
 import varpepdb
 import rpg
 
-# Set enzymes to and Asp-N and trypsin
+# Set enzymes to Asp-N and trypsin from the rpg package
 varpepdb.setenzyme([rpg.RapidPeptidesGenerator.ALL_ENZYMES[1], 
                     rpg.RapidPeptidesGenerator.ALL_ENZYMES[41]])
 # Allow 1 miscleave
@@ -55,20 +55,22 @@ varpepdb.write_fasta(path='path/to/output.fasta',
                      peptides=var_peptides,
                      include_non_unique=True)
 ```
-Refer to functions' docstring for more information.
+
+## Enzymes 
+In-silico digestion is performed using the [rpg](https://rapid-peptide-generator.readthedocs.io/en/latest/userguide.html#installation) package. Refer to rpg's [documentation](https://rapid-peptide-generator.readthedocs.io/en/latest/index.html) on which [enzymes are available](https://rapid-peptide-generator.readthedocs.io/en/latest/enzymes.html) and how to [create your own enzyme](https://rapid-peptide-generator.readthedocs.io/en/latest/userguide.html#creating-a-new-enzyme).
 
 ## Fasta output
 Example of an entry written into the fasta file:
 >\>A0A8I5KQE6-v1 RPSA2 129-143 (p.Pro143Arg),p.Thr135Met 0 <br>
 ADHQPLMEASYVNLR
 
-`A0A8I5KQE6-v1` is the sequence identifier of the parent protein (in this case the Uniprot ascension number) with <br>
+**A0A8I5KQE6-v1** is the sequence identifier of the parent protein (in this case the Uniprot ascension number) with <br>
 'v{number}' appended to identify it as a peptide of the parent protein. <br>
-`RPSA2` is the name of the gene for this protein. <br>
-`129-143` is the position of the parent protein sequence from which this peptide is dervied.
-`(p.Pro143Arg)` is an amino acid substitution that affected the enzyme cleavage site. Amino acid substitutions that introduce or remove cleavage sites are marked by parenthesis. <br>
-`p.Thr135Met` is an amino acid subtstitution that didn't affect enzyne cleavage site. <br>
-`0` refers to the number of miscleavages <br>
+**RPSA2** is the name of the gene for this protein. <br>
+**129-143** is the position of the parent protein sequence from which this peptide is dervied.
+**(p.Pro143Arg)** is an amino acid substitution that affected the enzyme cleavage site. Amino acid substitutions that introduce or remove cleavage sites are marked by parenthesis. <br>
+**p.Thr135Met** is an amino acid subtstitution that didn't affect enzyne cleavage site. <br>
+**0** refers to the number of miscleavages <br>
 
 
 ## Contact
