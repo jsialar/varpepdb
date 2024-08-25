@@ -28,4 +28,4 @@ dynamic = ["version"]
 # Intentionally left blank
 
 [project.urls]
-Homepage = "https://gitlab.com/fcoe/biology/varpepdb"
+Homepage = "https://github.com/jsialar/varpepdb"
