@@ -165,7 +165,8 @@ class Peptide:
             applied_nonenzymevariants = []
         self.applied_nonenzymevariants = applied_nonenzymevariants
 
-        self.nenzymevariants = len(applied_enzymevariants)
+        self.n_applied_enzymevar = len(applied_enzymevariants)
+        self.n_applied_nonenzymevar = len(applied_nonenzymevariants)
 
     def __contains__(self, other: SAP):
         return other.pos >= self.start and other.pos <= self.end
@@ -188,7 +189,6 @@ class Peptide:
 
         new_applied_enzymevariants = self.applied_enzymevariants[:] + \
             [i for i in other.applied_enzymevariants if i not in self.applied_enzymevariants]
-
         new_applied_nonenzymevariants = self.applied_nonenzymevariants + other.applied_nonenzymevariants
 
         newinstance = self.__class__(aa_string=self._seq+other._seq,
@@ -312,10 +312,11 @@ class Peptide:
             if one_change[2]:  # If there is a SAP object
                 if variant_type == 'enzyme':
                     self.applied_enzymevariants.append(one_change[2])
-                    self.nenzymevariants += 1
+                    self.n_applied_enzymevar += 1
 
                 elif variant_type == 'nonenzyme':
                     self.applied_nonenzymevariants.append(one_change[2])
+                    self.n_applied_nonenzymevar += 1
 
     def add_enzyme_variants(self, v):
         self.check_variant(v)
