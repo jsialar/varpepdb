@@ -450,6 +450,8 @@ def _cleave_breaker_peptides(peptide: vc.Peptide) -> List[vc.Peptide]:
         if peptide.not_too_long():  # Keep peptides for miscleavaging later
             peptide.miscleave_count = 0
             cleaved_peptides = [peptide]
+        else:
+            cleaved_peptides = []
 
     else:
         # Apply variants and cleave

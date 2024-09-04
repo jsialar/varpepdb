@@ -196,7 +196,17 @@ class TestGenerateSingle(unittest.TestCase):
                                       'PSLFWHYKALMPAGNCI', 
                                       'FNGIYADPSGHCNFFWPSLFW', 
                                       'FNGAYADPSGHCNFFWPSLFW'])
-
+        
+    def test_nocanonicalmiscleavage(self):
+        """Test that 2 canonical peptides without variants will not
+            get miscleaved together
+        """        
+        aa_string = "FNGIYADWSGHCNFFWPSLFSHYKALMPAGNCI"
+        peptide = vc.Peptide(aa_string, 'identifier', 'gene')
+        res = varpepdb.generate_single(variants=[generatevariant(peptide, 32, 'K')],
+                                        sequence=aa_string, gene='protein')
+        
+        self.assertsequenceprop(res, ['PSLFSHYKALMPAGNCK', 'SGHCNFFWPSLFSHYKALMPAGNCK'])
 
 if __name__ == "__main__":
     unittest.main()
