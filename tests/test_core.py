@@ -5,6 +5,7 @@ import varpepdb
 import varpepdb.core as vco
 import unittest
 import Bio.SeqUtils
+import pdb
 
 enzyme_obj = rpg.RapidPeptidesGenerator.ALL_ENZYMES[26]
 
@@ -91,29 +92,18 @@ class TestDeduplicate(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.peptide = vc.Peptide("FNGIYADPSGHCNFFWPSLFSHYKALMPAGNCI", 'identifier', 'gene')
+        cls.peptide = vc.Peptide("AAAAAAAWAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", 'identifier', 'gene')
 
     def test_deduplicate(self):
-        hgvs = [generatevariant(self.peptide, 15, 'K'),
+        hgvs = [generatevariant(self.peptide, 7, 'K'),
                 generatevariant(self.peptide, 22, 'W')]
         variants = vc.Variant(hgvs, enzyme_obj)
         peptide = vco._allocate_variants_to_peptide(variants, self.peptide)
         cleaved_within = vco._cleave_breaker_peptides(peptide)
-        cleaved_peptides_within_length = [j for i in cleaved_within for j in i if j.within_length()]
+        cleaved_peptides_within_length = [j for i in cleaved_within for j in i if j]
         cleaved_list = vco._deduplicate(cleaved_peptides_within_length)
-        self.assertEqual(len(cleaved_list), 3)
-        self.assertEqual(len(cleaved_list[1].applied_enzymevariants), 1)
-        self.assertEqual(cleaved_list[1].applied_enzymevariants[0].string, 'p.Tyr23Trp')
-
-    def test_novariants(self):
-        hgvs = []
-        variants = vc.Variant(hgvs, enzyme_obj)
-        peptide = vco._allocate_variants_to_peptide(variants, self.peptide)
-        cleaved_within = vco._cleave_breaker_peptides(peptide)
-        cleaved_peptides_within_length = [j for i in cleaved_within for j in i if j.within_length()]
-        cleaved_list = vco._deduplicate(cleaved_peptides_within_length)
-        self.assertEqual(len(cleaved_list), 0)
-
+        self.assertEqual(len(cleaved_list), 5)
+        self.assertEqual(len(cleaved_list[4].applied_enzymevariants), 0)
 
 class TestSprinkleVariants(unittest.TestCase):
 
@@ -129,12 +119,10 @@ class TestSprinkleVariants(unittest.TestCase):
         variants = vc.Variant(hgvs, enzyme_obj)
         peptide = vco._allocate_variants_to_peptide(variants, peptide)
         peptide_variant = vco._sprinkle_variants(peptide=peptide)
-        self.assertsequenceprop(peptide_variant, ['FNGIYADPSGH',
-                                                  'FNGIYADYSGH',
+        self.assertsequenceprop(peptide_variant, ['FNGIYADYSGH',
                                                   'FNGIYKDPSGH',
                                                   'FNGIYKDYSGH'])
-        self.assertEqual(peptide_variant[0].applied_nonenzymevariants, [])
-        variant_list = [j.string for i in peptide_variant[1:] for j in i.applied_nonenzymevariants]
+        variant_list = [j.string for i in peptide_variant for j in i.applied_nonenzymevariants]
         self.assertEqual(variant_list, ['p.Pro28Tyr', 'p.Ala26Lys', 'p.Ala26Lys', 'p.Pro28Tyr'])
 
 
@@ -149,7 +137,7 @@ class TestMiscleaveWithinBreakers(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        varpepdb.setpeptidelengths(cls.default_max_length, cls.default_min_length)
+        varpepdb.setpeptidelengths(cls.default_min_length, cls.default_max_length)
 
     def test_gap(self):
         peptide1 = vc.Peptide("FNGIYADPSG", 'identifier', 'gene', start=20, miscleave_count=0)
@@ -190,6 +178,24 @@ class MiscleaveBetBreakers(unittest.TestCase):
         miscl_pep_bet = vco._miscleave_bet_breakers(peptide_list1, peptide_list2)
         self.assertEqual(str(miscl_pep_bet[0]), 'FNGIYADPSGFNGIYADPSG')
         self.assertEqual(str(miscl_pep_bet[1]), 'DFNDFNDFNDFNGIYADPSG')
+
+class TestGenerateSingle(unittest.TestCase):
+
+    def assertsequenceprop(self, peptide, targets):
+        for i, j in zip(peptide, targets):
+            self.assertEqual(str(i), j)
+
+
+    def test_generatesingle(self):
+        aa_string = "FNGIYADPSGHCNFFWPSLFSHYKALMPAGNCI"
+        peptide = vc.Peptide(aa_string, 'identifier', 'gene')
+        res = varpepdb.generate_single(variants=[generatevariant(peptide, 3, 'A'), generatevariant(peptide, 20, 'W')],
+                                       sequence=aa_string, gene='protein')
+        self.assertsequenceprop(res, ['FNGAYADPSGHCNFFW', 
+                                      'HYKALMPAGNCI', 
+                                      'PSLFWHYKALMPAGNCI', 
+                                      'FNGIYADPSGHCNFFWPSLFW', 
+                                      'FNGAYADPSGHCNFFWPSLFW'])
 
 
 if __name__ == "__main__":

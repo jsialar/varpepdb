@@ -83,7 +83,7 @@ def generate_single(variants: List[str], sequence: str, gene: str) -> List[vc.Pe
     Returns:
         List of all variant peptides containing different combinations of single amino acid substitutions.
     """
-    # Include checking function
+    # TODO: Include checking function
     identifier = variants[0].split(':')[0]
     variants = vc.Variant(variants)
     peptide = vc.Peptide(sequence, identifier, gene)
@@ -99,13 +99,14 @@ def generate_single(variants: List[str], sequence: str, gene: str) -> List[vc.Pe
 
         peptide = _allocate_variants_to_peptide(variants, peptide)
 
-        cleaved_within = _cleave_breaker_peptides(peptide)  # List of peptides cleaved within breakers
+        # List of peptides cleaved within breakers that are not too long
+        cleaved_within = _cleave_breaker_peptides(peptide)
 
         # Select cleaved AA_sequence based on shortest variant list.
         # For peptides with more than 1 shortest variant list, add up the list.
         # Such peptides can be generated with more than 1 combination.
-        cleaved_peptides_within_length = [j for i in cleaved_within for j in i if j.within_length()]
-        cleaved_list = _deduplicate(cleaved_peptides_within_length)
+        cleaved_within_flat = [j for i in cleaved_within for j in i]
+        cleaved_list = _deduplicate(cleaved_within_flat)
         cleaved_within_list.append(cleaved_list)
 
         # Sprinkle variants to cleaved peptides
@@ -234,19 +235,19 @@ def write(write_path: str, peptides: List[vc.Peptide], include_non_unique: bool 
 
     if include_non_unique:
 
+        name_tracker = Counter()
+
         for nonunique_list in nonunique_peptides:
 
             combined_identifier = '/'.join([i.identifier for i in nonunique_list])
             combined_description = '/'.join([_make_description(i) for i in nonunique_list])
 
-            # seqrecord = SeqRecord(Seq(str(nonunique_list[0])),
-            #                       id=combined_identifier,
-            #                       name=combined_identifier,
-            #                       description=combined_description)
+            v_no = name_tracker[combined_identifier] + 1
+            appended_identifier = combined_identifier + f'-v{v_no}'
 
-            # SeqIO.write(seqrecord, fh, "fasta")
+            utils.write_fasta(str(nonunique_list[0]), appended_identifier, combined_description, fh)
 
-            utils.write_fasta(str(nonunique_list[0]), combined_identifier, combined_description, fh)
+            name_tracker[combined_identifier] += 1
 
     fh.close()
 
@@ -351,6 +352,13 @@ def _sprinkle_variants(peptide: vc.Peptide) -> List[vc.Peptide]:
     for one_combi in tuplecombi:
         peptide_cp = copy.deepcopy(peptide)
         peptide_cp.apply_tuple_combination(one_combi, 'nonenzyme')
+
+        # Exclude peptide if it is too short
+        if not peptide_cp.within_length():
+            continue
+        # Exclude peptide if it contains at 0 variant applied
+        if peptide_cp.n_applied_enzymevar + peptide_cp.n_applied_nonenzymevar == 0:
+            continue
         peptide_variant.append(peptide_cp)
 
     return peptide_variant
@@ -370,21 +378,22 @@ def _deduplicate(cleaved_peptides_flatten: List[vc.Peptide]) -> List[vc.Peptide]
     """
 
     cleaved_peptides_flatten.sort(key=str)
-    group_iter = itertools.groupby(cleaved_peptides_flatten, key=str)
+    # Group by seq, and start/end position. Positions are needed to differentiate repeated motifs.
+    group_iter = itertools.groupby(cleaved_peptides_flatten, key= lambda x:(str(x), x.start, x.end))
 
     dedup_list = []
     for _, peptide_group in group_iter:
         peptide_list = list(peptide_group)
 
-        min_nvariants = min([i.nenzymevariants for i in peptide_list])
+        min_nvariants = min([i.n_applied_enzymevar for i in peptide_list])
 
-        if min_nvariants == 0:
-            # Peptide can be generated from canonical sequence, so skip it
-            continue
+        # if min_nvariants == 0:
+        #     # Peptide can be generated from canonical sequence, so skip it
+        #     continue
 
         min_idx_list = []
         for idx, pep in enumerate(peptide_list):
-            if pep.nenzymevariants == min_nvariants:
+            if pep.n_applied_enzymevar == min_nvariants:
                 min_idx_list.append(idx)
 
         firstpeptide = peptide_list[min_idx_list[0]]
@@ -403,7 +412,9 @@ def _deduplicate(cleaved_peptides_flatten: List[vc.Peptide]) -> List[vc.Peptide]
 def _miscleave_within_breakers(cleaved_within: List[List[vc.Peptide]]) -> List[vc.Peptide]:
 
     miscleaved_peptide_list = []
+    # one_combi_cleaved is list of cleaved peptides after applying 1 tuple combination
     for one_combi_cleaved in cleaved_within:
+        # Apply miscleavages within each one_combi_cleaved
         for i in range(len(one_combi_cleaved)-1):
             if one_combi_cleaved[i+1].start - one_combi_cleaved[i].end == 1:
 
