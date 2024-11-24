@@ -35,3 +35,12 @@ def setpeptidelengths(min_length: int, max_length: int) -> None:
     """
     vc.Peptide.min_length = min_length
     vc.Peptide.max_length = max_length
+
+
+def setdiscardcanonical(discardcanonical: bool) -> None:
+    """Discard canonical peptides or not
+
+    Args:
+        discardcanonical: True or False
+    """
+    vco.discardcanonical = discardcanonical

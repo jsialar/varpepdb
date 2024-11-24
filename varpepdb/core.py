@@ -8,6 +8,7 @@ import multiprocessing as mp
 from typing import List, Tuple, Union
 
 miscleave = True
+discardcanonical = True
 cleaver = vc.Cleaver()
 
 
@@ -154,7 +155,7 @@ def variant_containing_peptides(peptide_list: List[vc.Peptide]) -> List[vc.Pepti
 
     A segment of a protein may contain only a single amino acid substitution that causes enzymatic cleavage.
     One of the resulting peptides is a variant peptide that may not contain any amino acid substitution.
-    For example, a p.Gly11Arg substitution in this protein FNGIYADPS*G*HNGYDA will result in FNGIYADPS*R*
+    For example, a p.Gly11Arg substitution in this protein FNGIYADPSGHNGYDA will result in FNGIYADPSR
     and HNGYDA after digestion by trypsin. HNGYDA is a variant peptide as it cannot be found by digesting
     the canonical sequence, but it doesn't contain any amino acid substitution within itself.
 
@@ -290,7 +291,7 @@ def _get_tuple_combinations(variants: List[vc.SAP], omit: List[vc.SAP] = None) \
 
     Returns:
         List of tuples. Each tuple is a combination of amino acid substitutions to generate
-        one variant peptide. This combination is a tuple. First element is position for
+        one variant peptide. An amino acid substitution is itself represented by a tuple. First element is position for
         substitution, second element is the amino acid to substitute in, third element is
         the variant object or ``None`` if this combination substitutes in the canonical amino
         acid.
@@ -333,6 +334,7 @@ def _sprinkle_variants(peptide: vc.Peptide) -> List[vc.Peptide]:
 
     Creates all possible combinations of amino acid substitutions that do not affect
     enzyme cleavage sites and applies each of them to generate variant peptides.
+    If discardcanonical is True, canonical sequences will be discarded. 
 
     Args:
         peptide: Peptide object
@@ -343,7 +345,7 @@ def _sprinkle_variants(peptide: vc.Peptide) -> List[vc.Peptide]:
 
     peptide_variant = []
 
-    # Omit applied enzyme variants to prevent the following situation:
+    # Omit nonenzyme variants acting on the same positions as applied enzyme variants to prevent the following situation:
     # Variant introducing a cleavage site (i.e. enzymevariant) is applied and resulted in cleavage
     # Another variant at that same position which doesn't cause cleavage overwrites the enzyme variant
     # Ends up with a cleaved peptide that doesn't have the cleavage site
@@ -356,9 +358,11 @@ def _sprinkle_variants(peptide: vc.Peptide) -> List[vc.Peptide]:
         # Exclude peptide if it is too short
         if not peptide_cp.within_length():
             continue
-        # Exclude peptide if it contains at 0 variant applied
-        if peptide_cp.n_applied_enzymevar + peptide_cp.n_applied_nonenzymevar == 0:
-            continue
+        # Exclude peptide if it contains 0 variant applied
+
+        if discardcanonical:
+            if peptide_cp.n_applied_enzymevar + peptide_cp.n_applied_nonenzymevar == 0:
+                continue
         peptide_variant.append(peptide_cp)
 
     return peptide_variant
@@ -387,10 +391,6 @@ def _deduplicate(cleaved_peptides_flatten: List[vc.Peptide]) -> List[vc.Peptide]
 
         min_nvariants = min([i.n_applied_enzymevar for i in peptide_list])
 
-        # if min_nvariants == 0:
-        #     # Peptide can be generated from canonical sequence, so skip it
-        #     continue
-
         min_idx_list = []
         for idx, pep in enumerate(peptide_list):
             if pep.n_applied_enzymevar == min_nvariants:
@@ -398,6 +398,8 @@ def _deduplicate(cleaved_peptides_flatten: List[vc.Peptide]) -> List[vc.Peptide]
 
         firstpeptide = peptide_list[min_idx_list[0]]
 
+        # If there is more than 1 combination of enzymatic SAPs leading to the same cleaved peptide, include them in the list of applied enzymevariants
+        # Can be improved to avoid confusion that these variants are all actually applied.
         if len(min_idx_list) > 1:
 
             for i in min_idx_list[1:]:
@@ -525,7 +527,7 @@ def _make_description(peptide: vc.Peptide) -> str:
 
     Raises:
         RuntimeError: If peptide doesn't arise from an amino acid substitution and can be
-        cleaved from the canonical sequence
+        obtained from the canonical sequence
 
     Returns:
         Description for fasta entry header
