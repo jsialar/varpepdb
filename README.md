@@ -20,7 +20,7 @@ import rpg
 varpepdb.setenzyme([rpg.RapidPeptidesGenerator.ALL_ENZYMES[1], 
                     rpg.RapidPeptidesGenerator.ALL_ENZYMES[41]])
 # Allow 1 miscleave
-varpepdb.miscleave = True
+varpepdb.setmiscleave(True)
 # Set peptide length limits. Default values are 6 and 30. 
 varpepdb.setpeptidelengths(min_length: 6, max_length: 30)
 
