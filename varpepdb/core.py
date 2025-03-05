@@ -175,6 +175,11 @@ def variant_containing_peptides(peptide_list: List[vc.Peptide]) -> List[vc.Pepti
         peptide_posrange = range(one_peptide.start, one_peptide.end + 1)
         allvariants = one_peptide.applied_nonenzymevariants + one_peptide.applied_enzymevariants
 
+        # Keep canonical variants
+        if not discardcanonical and len(allvariants) == 0:
+            informative_peptides.append(one_peptide)
+            continue
+
         for variant in allvariants:
             if variant.pos in peptide_posrange:
 
@@ -188,11 +193,11 @@ def write(write_path: str, peptides: List[vc.Peptide], include_non_unique: bool 
     """Writes variant peptides into fasta file
 
     Example of an entry written into fasta file:
-    >A0A8I5KQE6-v1 RPSA2 129-143 (p.Pro143Arg),p.Thr135Met 0
+    >A0A8I5KQE6-v1.1 RPSA2 129-143 (p.Pro143Arg),p.Thr135Met 0
     ADHQPLMEASYVNLR
 
-    'A0A8I5KQE6-v1' is the sequence identifier of the parent protein (in this case the Uniprot ascension number) with
-    'v1' appended to identify it as a peptide of the parent protein.
+    'A0A8I5KQE6' is the sequence identifier of the parent protein (in this case the Uniprot ascension number) with
+    'v1.1' is variant 1 of this peptide. 'v1.0' is the canonical peptide.    
     'RPSA2' is the name of the gene for this protein.
     '129-143' is the position of the parent protein sequence from which this peptide is dervied.
     '(p.Pro143Arg)' is an amino acid substitution that affected the enzyme cleavage site. Amino acid substitutions that
@@ -212,19 +217,27 @@ def write(write_path: str, peptides: List[vc.Peptide], include_non_unique: bool 
 
     unique_peptides, nonunique_peptides = separate_nonunique(peptides)
 
-    unique_peptides.sort(key=lambda x: x.identifier)
+    unique_peptides.sort(key=lambda x: (x.identifier, x.start))
 
     fh = open(write_path, "w")
 
-    for _, peptide_group in itertools.groupby(unique_peptides, key=lambda x: x.identifier):
+    v_group_counter = 0
+    for _, peptide_group in itertools.groupby(unique_peptides, key=lambda x: (x.identifier, x.start, x.end)):
 
         v_counter = 0
+        v_group_counter += 1
 
         for peptide in peptide_group:
 
-            v_counter += 1
+            n_applied_enzymes = peptide.n_applied_enzymevar + peptide.n_applied_nonenzymevar
 
-            identifier = peptide.identifier + '-v' + str(v_counter)
+            # If canonical, use 0
+            if n_applied_enzymes == 0:                        
+                v_counter_actual = 0
+            else:
+                v_counter += 1
+                v_counter_actual = v_counter
+            identifier = peptide.identifier + '-v' + str(v_group_counter) + '.' + str(v_counter_actual)
             description = _make_description(peptide)
 
             # seqrecord = SeqRecord(Seq(str(peptide)),
@@ -358,8 +371,8 @@ def _sprinkle_variants(peptide: vc.Peptide) -> List[vc.Peptide]:
         # Exclude peptide if it is too short
         if not peptide_cp.within_length():
             continue
-        # Exclude peptide if it contains 0 variant applied
 
+        # Exclude peptide if it contains 0 variant applied
         if discardcanonical:
             if peptide_cp.n_applied_enzymevar + peptide_cp.n_applied_nonenzymevar == 0:
                 continue
@@ -380,10 +393,10 @@ def _deduplicate(cleaved_peptides_flatten: List[vc.Peptide]) -> List[vc.Peptide]
     Returns:
         List of peptide with unique sequences and most straightforward amino acid substitutions.
     """
-
-    cleaved_peptides_flatten.sort(key=str)
+    cleaved_peptides_flatten_c = copy.deepcopy(cleaved_peptides_flatten)
     # Group by seq, and start/end position. Positions are needed to differentiate repeated motifs.
-    group_iter = itertools.groupby(cleaved_peptides_flatten, key= lambda x:(str(x), x.start, x.end))
+    cleaved_peptides_flatten_c.sort(key=lambda x:(str(x), x.start, x.end))    
+    group_iter = itertools.groupby(cleaved_peptides_flatten_c, key= lambda x:(str(x), x.start, x.end))
 
     dedup_list = []
     for _, peptide_group in group_iter:
@@ -546,7 +559,7 @@ def _make_description(peptide: vc.Peptide) -> str:
         variant_string = nonenzymevar
 
     else:
-        raise RuntimeError(f'{peptide.identifier} has a peptide that can be derived from the canonical sequence.')
+        variant_string = 'Canonical'
 
     pos_range = str(peptide.start + 1) + '-' + str(peptide.end + 1)
 
