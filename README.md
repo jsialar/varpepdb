@@ -1,5 +1,5 @@
 ## Overview
-varpepdb is a python package for generating a fasta database of genetically variant peptides for peptide spectrum matching after data acquisition by LC/MS. It takes in a list of amino acid substitutions for a protein sequence and generates all possible variant peptides after enzymatic cleaving. It allows for multiple digestion enzymes and up to 1 miscleavage. It also takes into account the effect of amino acid substitutions on enzyme cleavage.
+varpepdb is a python package for generating a fasta database of genetically variant peptides for database searching after data acquisition by LC/MS. It takes in a list of amino acid substitutions for a protein sequence and generates all possible variant peptides after enzymatic cleaving. It allows for multiple digestion enzymes and up to 1 miscleavage. It also takes into account the effect of amino acid substitutions on enzyme cleavage.
 
 ## Installation
 Requires:
@@ -16,7 +16,7 @@ pip install varpepdb
 import varpepdb
 import rpg
 
-# Set enzymes to Asp-N and trypsin from the rpg package
+# Set enzymes to Asp-N and Trypsin from the rpg package
 varpepdb.setenzyme([rpg.RapidPeptidesGenerator.ALL_ENZYMES[1], 
                     rpg.RapidPeptidesGenerator.ALL_ENZYMES[41]])
 # Allow 1 miscleave
@@ -51,9 +51,9 @@ varpepdb.write(path='path/to/output.fasta',
 Multiple proteins can be processed in parallel using `varpepdb.generate`. 
 
 ```
-peptides = generate(input_list=[(variants1, sequence1, gene1, identifier1),
-                                (variants2, sequence2, gene3, identifier2),
-                                (variants3, sequence2, gene3, identifier3)])
+peptides = generate(input_list=[(variant_list1, sequence1, gene1, identifier1),
+                                (variant_list2, sequence2, gene2, identifier2),
+                                (variant_list3, sequence3, gene3, identifier3)])
 
 var_peptides=varpepdb.variant_containing_peptides(peptides)
 
@@ -75,7 +75,7 @@ ADHQPLMEASYVNLR
 **RPSA2** is the name of the gene for this protein. <br>
 **129-143** is the position of the parent protein sequence from which this peptide is dervied.
 **(p.Pro143Arg)** is an amino acid substitution that affected the enzyme cleavage site. Amino acid substitutions that introduce or remove cleavage sites are marked by parenthesis. <br>
-**p.Thr135Met** is an amino acid subtstitution that didn't affect enzyne cleavage site. <br>
+**p.Thr135Met** is an amino acid subtstitution that didn't affect enzyme cleavage site. <br>
 **0** refers to the number of miscleavages <br>
 
 
