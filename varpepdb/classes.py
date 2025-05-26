@@ -114,9 +114,8 @@ class Variant:
                 self.nonenzyme_variants.append(i)
 
     def parse_list(self, hgvs_str_list):
-        for hgvs_str in hgvs_str_list:
-
-            variant_one = hgvs_str.split(':')[1]
+        for variant_one in hgvs_str_list:
+            
             pos = int(variant_one[5:-3]) - 1  # Use 0 based position
             ref = utils.AA_3to1[variant_one[2:5]]
             alt = utils.AA_3to1[variant_one[-3:]]
@@ -168,6 +167,10 @@ class Peptide:
         self.n_applied_enzymevar = len(applied_enzymevariants)
         self.n_applied_nonenzymevar = len(applied_nonenzymevariants)
 
+    def __eq__(self, other):
+        # Compare only positions in protein and sequence
+        return self.seq() == other.seq() and self.start == other.start and self.end == other.end and self.identifier == other.identifier
+
     def __contains__(self, other: SAP):
         return other.pos >= self.start and other.pos <= self.end
 
@@ -203,10 +206,13 @@ class Peptide:
         return newinstance
 
     def __str__(self):
+        return self.seq()
+    
+    def seq(self):
         return self._seq.decode("ASCII")
 
     def __repr__(self):
-        return str(self) + '\n' + f'Start: {self.start}' + '\n' + f'End: {self.end}'
+        return self.seq() + '\n' + f'Start: {self.start}' + '\n' + f'End: {self.end}'
 
     def __getitem__(self, index):
 

@@ -31,11 +31,13 @@ variants = ['O75844:p.Trp11Trp',
             'O75844:p.Gln41His']
 sequence = 'MGMWASLDALWEMPAEKRIFGAVLLFSWTVYLWETFLAQRQRRIYKTTTH'
 gene = 'ZMPSTE24'
+identifier = 'B3KQI7'
 
 # Generate variant peptides
 peptides = generate_single(variants=variants, 
                            sequence=sequence, 
-                           gene=gene)
+                           gene=gene,
+                           identifier=identifier)
 
 # Removes variant peptides that do not contain at least 1 amino acid substitution
 var_peptides=varpepdb.variant_containing_peptides(peptides)
@@ -49,9 +51,9 @@ varpepdb.write(path='path/to/output.fasta',
 Multiple proteins can be processed in parallel using `varpepdb.generate`. 
 
 ```
-peptides = generate(input_list=[(variants1, sequence1, gene1),
-                                (variants2, sequence2, gene3),
-                                (variants3, sequence2, gene3)])
+peptides = generate(input_list=[(variants1, sequence1, gene1, identifier1),
+                                (variants2, sequence2, gene3, identifier2),
+                                (variants3, sequence2, gene3, identifier3)])
 
 var_peptides=varpepdb.variant_containing_peptides(peptides)
 

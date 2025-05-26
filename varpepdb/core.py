@@ -10,21 +10,26 @@ from typing import List, Tuple, Union
 miscleave = True
 discardcanonical = True
 cleaver = vc.Cleaver()
+createcombi = True  # To create combinations of SAPs or not
+message = True
 
 
-def generate(input_list: List[Tuple[List[str], str, str]], proc: int = mp.cpu_count()) -> List[vc.Peptide]:
+def generate(input_list: List[Tuple[List[str], str, str, str]], proc: int = mp.cpu_count()) -> \
+    List[vc.Peptide]:
     """Generates variant peptides with parallel processing
 
     Performs a check on the input list and then evokes ``generate_single`` for each input in parallel.
 
     Args:
-        input_list: List of input. Each input element is a list consisting of the following 3 elements.
+        input_list: List of input. Each input element is a list consisting of the following 3 elements.                    
                     1. An list of HGVS nomenclatures describing amino acid substitution.
-                        eg ['Q9Y6C5:p.Gly1197Arg', 'Q9Y6C5:p.Thr988Met',...]
+                        eg ['p.Gly1197Arg', 'p.Thr988Met',...]
                     2. Sequence of amino acid for the protein
                         'MTRSPPLRELPPSYTPPARTAAPQILAGSLKAPL...'
                     3. Gene name of the protein.
                         eg 'PTCH2'
+                    4. Identifier for the protein
+                        eg Uniprot accension number
         proc: Number of processes to run in parallel for each input.
                     Defaults to the number of cores available
 
@@ -41,17 +46,16 @@ def generate(input_list: List[Tuple[List[str], str, str]], proc: int = mp.cpu_co
 
         hgvs_str_list = input_list[idx][0]
 
-        correct_count = sum([bool(re.match('.*:p\.[A-Z][a-z]{2}\d+[A-Z][a-z]{2}', i)) for i in hgvs_str_list])
+        correct_count = sum([bool(re.match(r'^p\.[A-Z][a-z]{2}\d+[A-Z][a-z]{2}', i)) for i in hgvs_str_list])
         if correct_count != len(hgvs_str_list):
             error_list.append(f'Element {idx} of input: One or more entries of variant list \
                               do not obey HGVS nomenclature.')
+            
+        if len(hgvs_str_list) == 0:
+            if message:
+                print('Variant list is empty. Generating only canonical peptides.')
 
-        ACsetsize = len(set([i.split(':')[0] for i in hgvs_str_list]))
-
-        if ACsetsize > 1:
-            error_list.append(f'Element {idx} of input: More than 1 uniprot ascension number in variant list')
-
-        if max(Counter(hgvs_str_list).values()) > 1:
+        elif max(Counter(hgvs_str_list).values()) > 1:
 
             duplicated_list = []
             for item in Counter(hgvs_str_list).items():
@@ -73,19 +77,18 @@ def generate(input_list: List[Tuple[List[str], str, str]], proc: int = mp.cpu_co
     return flatten_res
 
 
-def generate_single(variants: List[str], sequence: str, gene: str) -> List[vc.Peptide]:
+def generate_single(variants: List[str], sequence: str, gene: str, identifier: str) -> List[vc.Peptide]:
     """Generates variant peptides for one input.
 
     Args:
-        variants: An list of HGVS nomenclatures describing amino acid substitution. eg. ['Q9Y6C5:p.Gly1197Arg', ...]
+        variants: An list of HGVS nomenclatures describing amino acid substitution. eg. ['p.Gly1197Arg', ...]
         AA_wt_str: Sequence of amino acid for the protein.
         gene: Gene name of the protein. This is included as part of the description in the fasta header.
 
     Returns:
         List of all variant peptides containing different combinations of single amino acid substitutions.
     """
-    # TODO: Include checking function
-    identifier = variants[0].split(':')[0]
+    # TODO: Include checking function    
     variants = vc.Variant(variants)
     peptide = vc.Peptide(sequence, identifier, gene)
 
@@ -144,8 +147,8 @@ def generate_single(variants: List[str], sequence: str, gene: str) -> List[vc.Pe
             for pep in miscl_pep_bet:
                 miscleaved_variant = _sprinkle_variants(peptide=pep)
                 miscleaved_bet_vars.extend(miscleaved_variant)
-
-    print(f'completed {identifier}')
+    if message:
+        print(f'completed {identifier}')
 
     return cleaved_within_vars + miscleaved_within_vars + miscleaved_bet_vars
 
@@ -320,9 +323,10 @@ def _get_tuple_combinations(variants: List[vc.SAP], omit: List[vc.SAP] = None) \
 
     for pos, sap in itertools.groupby(variants, key=lambda x: x.pos):
         sap_list = list(sap)
-        onepos_tuple_list = []  # (position, AA to change to, SAP object)
-        # Add in reference amino acid
-        onepos_tuple_list.append((pos, sap_list[0].ref, None))
+        onepos_tuple_list = []  # (position, AA to change to, SAP object)        
+        if createcombi:
+            # Add in reference amino acid
+            onepos_tuple_list.append((pos, sap_list[0].ref, None))
         for sap_i in sap_list:
             onepos_tuple_list.append((pos, sap_i.alt, sap_i))
         allpos_tuple_list.append(onepos_tuple_list)
@@ -347,7 +351,7 @@ def _sprinkle_variants(peptide: vc.Peptide) -> List[vc.Peptide]:
 
     Creates all possible combinations of amino acid substitutions that do not affect
     enzyme cleavage sites and applies each of them to generate variant peptides.
-    If discardcanonical is True, canonical sequences will be discarded. 
+    If discardcanonical is True, canonical sequences will be discarded.
 
     Args:
         peptide: Peptide object
@@ -411,13 +415,11 @@ def _deduplicate(cleaved_peptides_flatten: List[vc.Peptide]) -> List[vc.Peptide]
 
         firstpeptide = peptide_list[min_idx_list[0]]
 
-        # If there is more than 1 combination of enzymatic SAPs leading to the same cleaved peptide, include them in the list of applied enzymevariants
-        # Can be improved to avoid confusion that these variants are all actually applied.
+        # If there is more than 1 combination of enzymatic SAPs leading to the same cleaved peptide, just use the first combination found
+        # and print a warning
         if len(min_idx_list) > 1:
-
-            for i in min_idx_list[1:]:
-                subsequentpeptide = peptide_list[i]
-                firstpeptide.applied_enzymevariants.extend(subsequentpeptide.applied_enzymevariants)
+            if message:
+                print('Warning: More than 1 combination of enymatic SAPs producing the same peptide found')
 
         dedup_list.append(firstpeptide)
 
@@ -474,7 +476,20 @@ def _cleave_breaker_peptides(peptide: vc.Peptide) -> List[vc.Peptide]:
         for tuple_combinations_i in tuple_combinations:
             peptide_cp = copy.deepcopy(peptide)
             peptide_cp.apply_tuple_combination(tuple_combinations_i, variant_type='enzyme')
-            cleaved_peptides.append(cleaver(peptide_cp))
+            applied_cleaved = cleaver(peptide_cp)
+            if not createcombi:
+                # If not creating combi, replace certain peptides with canonical peptides
+                # To account for certain edge cases like
+                # SEGGTAQLLRR with a subsitution at the C terminus. 
+                # SEGGTAQLLR could be generated canonically without any enzyme-SAP
+                # So should be considered as canonical
+                non_applied_cleaved = cleaver(peptide)
+                for i in range(len(applied_cleaved)):
+                    for j in non_applied_cleaved:
+                        if applied_cleaved[i] == j:
+                            applied_cleaved[i] = j
+                            
+            cleaved_peptides.append(applied_cleaved)
 
     return cleaved_peptides
 

@@ -44,3 +44,21 @@ def setdiscardcanonical(discardcanonical: bool) -> None:
         discardcanonical: True or False
     """
     vco.discardcanonical = discardcanonical
+
+
+def setcombinations(combinations: bool) -> None:
+    """To create combinations of SAPs or not
+
+    Args:
+        combinations: True or False
+    """
+    vco.createcombi = combinations
+
+
+def setmessage(message: bool) -> None:
+    """To turn message off or on. Default is on.
+
+    Args:
+        message: True or False
+    """
+    vco.message = message
