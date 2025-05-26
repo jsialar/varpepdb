@@ -168,7 +168,7 @@ class MiscleaveBetBreakers(unittest.TestCase):
         miscl_pep_bet = vco._miscleave_bet_breakers(peptide_list1, peptide_list2)
         self.assertEqual(len(miscl_pep_bet), 0)
 
-    def test_2to1(self):
+    def test_miscleave(self):
         peptide1 = vc.Peptide("FNGIYADPSG", 'identifier', 'gene', start=20, miscleave_count=0)
         peptide2 = vc.Peptide("DFNDFNDFND", 'identifier', 'gene', start=20, miscleave_count=0)
         peptide_list1 = [peptide1, peptide2]
